@@ -1,6 +1,6 @@
 [package]
 name = "raw"
 version = "0.1.0"
-authors = ["Kevin Tian <kevintian2229@gmail.com>"]
+authors = ["Kevin Tian <kevintian2229@gmail.com>", "Clay Kauzlaric <clay.kauzlaric@yahoo.com"]
 
 [dependencies]
