@@ -1,5 +1,6 @@
 use std::fmt;
 
+
 #[derive(Debug)]
 pub struct TimeSignature {
     beats: u16,     // example: 3 time
