@@ -21,10 +21,10 @@ trait Clip : Sized {
     fn samples_per_sec(&self) -> u64;
     
     /// get the sample at a point.
-    fn get(&self, sample_at: u64) -> u32;
+    fn get(&self, sample_at: u64) -> i32;
     
     /// set the sample at a point.
-    fn set(&mut self, sample_at: u64, val: u32);
+    fn set(&mut self, sample_at: u64, val: i32);
     
     /// returns a subclip given a start and duration with unit of samples.
     /// used by subclip().
@@ -51,8 +51,27 @@ trait Clip : Sized {
     /// interpolate between samples
     /// calculates the value at (sample_at + fractional) 
     /// where 0.0 <= fractional < 1.0
-    fn interpolate(&self, sample_at: u64, fractional: f64) -> u32 {
-        unimplemented!()
+    /// the current interpolation function is linear; this should definitely
+    /// use a better method eventually.
+    fn interpolate(&self, sample_at: u64, fractional: f64) -> Option<i32> {
+        assert!(fractional >= 0.0 && fractional < 1.0);
+        let dur = self.duration();
+        if sample_at <= 0 || sample_at >= dur {
+            // out of range
+            None
+        } else if sample_at == dur - 1 {
+            // within range, but only one sample to "interpolate" from, so just
+            // return that value
+            Some(self.get(sample_at))
+        } else {
+            // y = mx + b
+            // the two points to interpolate between are (0, y0) and (1, y1)
+            // so m = y1 - b and b = y0.
+            let b = self.get(sample_at + 1) as f64;
+            let m = self.get(sample_at) as f64 - b;
+            
+            Some((m * fractional + b).round() as i32)
+        }
     }
 }
 
