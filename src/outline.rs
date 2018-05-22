@@ -1,7 +1,10 @@
+use std::io;
+use std::io::{Read, Write};
+
 /// moments and durations are represented by types that implement Time.
 /// Convertible to/from the equivalent number of samples. This allows time to
 /// be represented in different ways, e.g. measures+beats, seconds+millis, etc.
-trait Time : Sized {
+pub trait Time : Sized {
     /// the number of samples that takes up the same amount of time as self 
     fn to_samples(&self, samples_per_sec: u64) -> u64;
     
@@ -10,9 +13,12 @@ trait Time : Sized {
 }
 
 /// 
-trait Clip : Sized {
+pub trait Clip : Sized {
+    //from_iter()? or some other way to mix several Clips, not sure
+    // where that code should go
+    
     /// returns an iterator over this clip.
-    fn iter(&self) -> Iterator<Item = Self>;
+    //fn iter(&self) -> Iterator<Item = Self>;
     
     /// returns the duration in samples.
     fn duration(&self) -> u64;
@@ -22,6 +28,8 @@ trait Clip : Sized {
     
     /// get the sample at a point.
     fn get(&self, sample_at: u64) -> i32;
+    // should this panic or return a Result instead upon out-of-bounds access
+    // consider performance
     
     /// set the sample at a point.
     fn set(&mut self, sample_at: u64, val: i32);
@@ -75,13 +83,21 @@ trait Clip : Sized {
     }
 }
 
-trait Filter {
+pub trait Filter {
     fn apply_sample<C: Clip>(&self, clip: &mut C, start: u64, duration: u64);
     
     fn apply<C: Clip, S: Time, T: Time>(&self, clip: &mut C, start: S, duration: T) {
         let spc = clip.samples_per_sec();
         self.apply_sample(clip, start.to_samples(spc), duration.to_samples(spc))
     }
+}
+
+pub trait AudioReader {
+    fn read<R: Read, C: Clip>(&mut self, r: R) -> io::Result<C>;
+}
+
+pub trait AudioWriter {
+    fn write<W: Write, C: Clip>(w: W, c: &C) -> io::Result<()>;
 }
 
 
