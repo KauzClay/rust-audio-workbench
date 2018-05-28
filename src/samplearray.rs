@@ -1,15 +1,15 @@
 //mod outline;
 //mod outline;
-use outline::Clip;
+use outline::{Clip, Sample};
 
 pub struct SampleArray {
-    pub samples_per_sec: u64,
-    pub samples: Vec<i32>,
+    pub samples_per_sec: u32,
+    pub samples: Vec<Sample>,
 }
 
 
 impl SampleArray {
-    pub fn new(samples_per_sec: u64, samples: Vec<i32>) -> Self {
+    pub fn new(samples_per_sec: u32, samples: Vec<Sample>) -> Self {
         SampleArray {samples_per_sec, samples}
     }
 }
@@ -23,35 +23,23 @@ impl Clip for SampleArray {
     }
 
     /// returns the number of samples per second of this clip.
-    fn samples_per_sec(&self) -> u64 {
+    fn samples_per_sec(&self) -> u32 {
         self.samples_per_sec
     }
 
     /// get the sample at a point.
-    fn get(&self, sample_at: u64) -> i32 {
-        self.samples[sample_at as usize]
+    fn get(&self, sample_at: u64) -> Sample {
+        if (sample_at as usize) < self.samples.len() {
+            self.samples[sample_at as usize]
+        } else {
+            0
+        }
     }
     // should this panic or return a Result instead upon out-of-bounds access
     // consider performance
 
-    /// set the sample at a point.
-    fn set(&mut self, sample_at: u64, val: i32) {
-        self.samples[sample_at as usize] = val;
-    }
-
-    /// returns a subclip given a start and duration with unit of samples.
-    /// used by subclip().
-    fn subclip_sample(&self, start: u64, duration: u64) -> Self {
-        unimplemented!();
-    }
-
-    // returns two subclips given the sample at which to split.
-    fn split_at_sample(&self, split_at: u64) -> (Self, Self) {
-        unimplemented!();
-    }
-
-    // modifies self by concatenating with other
-    fn concat(&mut self, other: &Self) {
-        unimplemented!();
-    }
+    // set the sample at a point.
+    //fn set(&mut self, sample_at: u64, val: Sample) {
+    //    self.samples[sample_at as usize] = val;
+    //}
 }

@@ -1,19 +1,32 @@
 use std::io;
-use std::io::{Read, Write};
+use std::io::{Read, Write, Seek};
+use std::rc::Rc;
+use samplearray::SampleArray;
 
+pub type Sample = i16;
 /// moments and durations are represented by types that implement Time.
 /// Convertible to/from the equivalent number of samples. This allows time to
 /// be represented in different ways, e.g. measures+beats, seconds+millis, etc.
 pub trait Time : Sized {
     /// the number of samples that takes up the same amount of time as self
-    fn to_samples(&self, samples_per_sec: u64) -> u64;
+    fn to_samples(&self, samples_per_sec: u32) -> u64;
 
     /// return a copy representing the length of time in num_samples
-    fn from_samples(&self, num_samples: u64, samples_per_sec: u64) -> Self;
+    fn from_samples(&self, num_samples: u64, samples_per_sec: u32) -> Self;
+}
+
+impl Time for u64 {
+    fn to_samples(&self, _samples_per_sec: u32) -> u64 {
+        *self
+    }
+    
+    fn from_samples(&self, num_samples: u64, _samples_per_sec: u32) -> Self {
+        num_samples
+    }
 }
 
 ///
-pub trait Clip : Sized {
+pub trait Clip {
     //from_iter()? or some other way to mix several Clips, not sure
     // where that code should go
 
@@ -24,16 +37,16 @@ pub trait Clip : Sized {
     fn duration(&self) -> u64;
 
     /// returns the number of samples per second of this clip.
-    fn samples_per_sec(&self) -> u64;
+    fn samples_per_sec(&self) -> u32;
 
     /// get the sample at a point.
-    fn get(&self, sample_at: u64) -> i32;
+    fn get(&self, sample_at: u64) -> Sample;
     // should this panic or return a Result instead upon out-of-bounds access
     // consider performance
 
     /// set the sample at a point.
-    fn set(&mut self, sample_at: u64, val: i32);
-
+    ///fn set(&mut self, sample_at: u64, val: Sample);
+/*
     /// returns a subclip given a start and duration with unit of samples.
     /// used by subclip().
     fn subclip_sample(&self, start: u64, duration: u64) -> Self;
@@ -54,14 +67,14 @@ pub trait Clip : Sized {
     fn split_at<T: Time>(&self, split_at: T) -> (Self, Self) {
         let spc = self.samples_per_sec();
         self.split_at_sample(split_at.to_samples(spc))
-    }
+    }*/
 
     /// interpolate between samples
     /// calculates the value at (sample_at + fractional)
     /// where 0.0 <= fractional < 1.0
     /// the current interpolation function is linear; this should definitely
     /// use a better method eventually.
-    fn interpolate(&self, sample_at: u64, fractional: f64) -> Option<i32> {
+    fn interpolate(&self, sample_at: u64, fractional: f64) -> Option<Sample> {
         assert!(fractional >= 0.0 && fractional < 1.0);
         let dur = self.duration();
         if sample_at <= 0 || sample_at >= dur {
@@ -78,13 +91,9 @@ pub trait Clip : Sized {
             let b = self.get(sample_at + 1) as f64;
             let m = self.get(sample_at) as f64 - b;
 
-            Some((m * fractional + b).round() as i32)
+            Some((m * fractional + b).round() as Sample)
         }
     }
-
-
-    fn from_samples<I: Iterator<Item = io::Result<i32>>>(samples: I) -> Self;
-
 }
 
 pub trait Filter {
@@ -96,14 +105,12 @@ pub trait Filter {
     }
 }
 
-pub trait AudioReader<C: Clip> {
+pub trait AudioReader {
     type Reader: Read;
-    //type ClipType: Clip;
-    fn read(&mut self, r: Self::Reader) -> io::Result<C>;
-
-    fn samples<I: Iterator>(&mut self) -> I;
+    fn read(&mut self) -> Option<Rc<SampleArray>>;
 }
 
 pub trait AudioWriter {
-    fn write<W: Write, C: Clip>(w: W, c: &C) -> io::Result<()>;
+    type Writer: Write + Seek;
+    fn write(w: Self::Writer, c: Rc<Clip>) -> bool;
 }
