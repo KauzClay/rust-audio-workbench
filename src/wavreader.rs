@@ -10,15 +10,23 @@ use outline::{Sample, AudioReader, AudioWriter, Clip};
 impl <R> AudioReader for hound::WavReader<R> where R: Read  {
     type Reader = R;
     //type ClipType = C;
-    fn read(&mut self) -> Option<Rc<SampleArray>> {
-        let mut is_ok = true;
-        let sa = Some(Rc::new(SampleArray::new(self.spec().sample_rate,
-            self.samples().map(|x_result: hound::Result<Sample> | {
-                if let Ok(x) = x_result { x as Sample }
-                else { is_ok = false; 0 }
-            }).collect())));
-        if is_ok { sa }
-        else { None }
+    fn read(&mut self) -> Option<Vec<Rc<SampleArray>>> {
+        let channels = self.spec().channels as usize;
+        let mut channel_samples = vec![Vec::new(); channels];
+        let sample_rate = self.spec().sample_rate;
+        
+        let mut samples = self.samples::<i16>();
+        let mut counter = 0;
+        while let Some(s) = samples.next() {
+            if let Ok(x) = s {
+                channel_samples[counter as usize].push(x as Sample);
+                counter = (counter + 1) % channels;
+            } else {
+                return None;
+            }
+        }
+        
+        Some(channel_samples.into_iter().map(|v| Rc::new(SampleArray::new(sample_rate, v))).collect())
     }
 }
 
@@ -26,7 +34,7 @@ impl <R> AudioReader for hound::WavReader<R> where R: Read  {
 impl <W> AudioWriter for hound::WavWriter<W> where W: Write + Seek {
     type Writer = W;
     
-    fn write(writer: Self::Writer, clip: Rc<Clip>) -> bool {
+    fn write(writer: Self::Writer, clip: &Clip) -> bool {
         let spec = hound::WavSpec {
             channels: 1,
             sample_rate: clip.samples_per_sec(),

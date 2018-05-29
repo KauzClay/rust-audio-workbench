@@ -1,5 +1,6 @@
-pub mod tempo;
-pub mod outline;
-pub mod samplearray;
-pub mod wavreader;
-pub mod compounds;
+mod tempo;
+mod outline;
+mod samplearray;
+mod wavreader;
+mod compounds;
+mod track;

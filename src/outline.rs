@@ -107,10 +107,10 @@ pub trait Filter {
 
 pub trait AudioReader {
     type Reader: Read;
-    fn read(&mut self) -> Option<Rc<SampleArray>>;
+    fn read(&mut self) -> Option<Vec<Rc<SampleArray>>>;
 }
 
 pub trait AudioWriter {
     type Writer: Write + Seek;
-    fn write(w: Self::Writer, c: Rc<Clip>) -> bool;
+    fn write(w: Self::Writer, c: &Clip) -> bool;
 }
