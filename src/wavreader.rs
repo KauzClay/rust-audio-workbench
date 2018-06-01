@@ -14,7 +14,7 @@ impl <R> AudioReader for hound::WavReader<R> where R: Read  {
         let channels = self.spec().channels as usize;
         let mut channel_samples = vec![Vec::new(); channels];
         let sample_rate = self.spec().sample_rate;
-        
+
         let mut samples = self.samples::<i16>();
         let mut counter = 0;
         while let Some(s) = samples.next() {
@@ -25,15 +25,15 @@ impl <R> AudioReader for hound::WavReader<R> where R: Read  {
                 return None;
             }
         }
-        
+
         Some(channel_samples.into_iter().map(|v| Rc::new(SampleArray::new(sample_rate, v))).collect())
     }
 }
 
-
+//TODO allow writing multiple channels
 impl <W> AudioWriter for hound::WavWriter<W> where W: Write + Seek {
     type Writer = W;
-    
+
     fn write(writer: Self::Writer, clip: &Clip) -> bool {
         let spec = hound::WavSpec {
             channels: 1,
@@ -53,5 +53,3 @@ impl <W> AudioWriter for hound::WavWriter<W> where W: Write + Seek {
         }
     }
 }
-
-
