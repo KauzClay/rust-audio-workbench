@@ -1,26 +1,32 @@
 use std::io;
 use std::io::{Read, Write, Seek};
-use std::rc::Rc;
+use std::sync::Arc;
 use samplearray::SampleArray;
 
+
 pub type Sample = i16;
+
 /// moments and durations are represented by types that implement Time.
 /// Convertible to/from the equivalent number of samples. This allows time to
 /// be represented in different ways, e.g. measures+beats, seconds+millis, etc.
 pub trait Time : Sized {
     /// the number of samples that takes up the same amount of time as self
-    fn to_samples(&self, samples_per_sec: u32) -> u64;
+    fn to_samples(&self, sample_rate: u32) -> u64;
 
     /// return a copy representing the length of time in num_samples
-    fn from_samples(&self, num_samples: u64, samples_per_sec: u32) -> Self;
+    fn from_samples(&self, num_samples: u64, sample_rate: u32) -> Self;
 }
 
 impl Time for u64 {
-    fn to_samples(&self, _samples_per_sec: u32) -> u64 {
+    /// u64's are treated like the raw sample count, so calling to_samples
+    /// on a u64 returns self.
+    fn to_samples(&self, _sample_rate: u32) -> u64 {
         *self
     }
     
-    fn from_samples(&self, num_samples: u64, _samples_per_sec: u32) -> Self {
+    /// u64's are treated like the raw sample count, so calling from_samples
+    /// on a u64 returns self.
+    fn from_samples(&self, num_samples: u64, _sample_rate: u32) -> Self {
         num_samples
     }
 }
@@ -33,41 +39,14 @@ pub trait Clip {
     /// returns an iterator over this clip.
     //fn iter(&self) -> Iterator<Item = Self>;
 
-    /// returns the duration in samples.
+    /// returns the duration of this clip in number of samples.
     fn duration(&self) -> u64;
 
     /// returns the number of samples per second of this clip.
-    fn samples_per_sec(&self) -> u32;
+    fn sample_rate(&self) -> u32;
 
-    /// get the sample at a point.
+    /// get the sample at a point. Returns 0 if out of range.
     fn get(&self, sample_at: u64) -> Sample;
-    // should this panic or return a Result instead upon out-of-bounds access
-    // consider performance
-
-    /// set the sample at a point.
-    ///fn set(&mut self, sample_at: u64, val: Sample);
-/*
-    /// returns a subclip given a start and duration with unit of samples.
-    /// used by subclip().
-    fn subclip_sample(&self, start: u64, duration: u64) -> Self;
-
-    // returns two subclips given the sample at which to split.
-    fn split_at_sample(&self, split_at: u64) -> (Self, Self);
-
-    // modifies self by concatenating with other
-    fn concat(&mut self, other: &Self);
-
-    /// returns a subclip given a start Time and a duration Time
-    fn subclip<S: Time, T: Time>(&self, start: S, duration: T) -> Self {
-        let spc = self.samples_per_sec();
-        self.subclip_sample(start.to_samples(spc), duration.to_samples(spc))
-    }
-
-    /// returns two subclips given a Time at which to split
-    fn split_at<T: Time>(&self, split_at: T) -> (Self, Self) {
-        let spc = self.samples_per_sec();
-        self.split_at_sample(split_at.to_samples(spc))
-    }*/
 
     /// interpolate between samples
     /// calculates the value at (sample_at + fractional)
@@ -100,14 +79,17 @@ pub trait Filter {
     fn apply_sample<C: Clip>(&self, clip: &mut C, start: u64, duration: u64);
 
     fn apply<C: Clip, S: Time, T: Time>(&self, clip: &mut C, start: S, duration: T) {
-        let spc = clip.samples_per_sec();
+        let spc = clip.sample_rate();
         self.apply_sample(clip, start.to_samples(spc), duration.to_samples(spc))
     }
 }
 
 pub trait AudioReader {
     type Reader: Read;
-    fn read(&mut self) -> Option<Vec<Rc<SampleArray>>>;
+    
+    /// Converts an n-channel audio file into a vector of n reference-counted
+    /// SampleArrays. Returns None upon failure.
+    fn read(&mut self) -> Option<Vec<Arc<SampleArray>>>;
 }
 
 pub trait AudioWriter {

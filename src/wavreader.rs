@@ -2,15 +2,15 @@ extern crate hound;
 
 use std::io;
 use std::io::{Read, Write, Seek};
-use std::rc::Rc;
+use std::sync::Arc;
 use samplearray::SampleArray;
 use outline::{Sample, AudioReader, AudioWriter, Clip};
 
 
 impl <R> AudioReader for hound::WavReader<R> where R: Read  {
     type Reader = R;
-    //type ClipType = C;
-    fn read(&mut self) -> Option<Vec<Rc<SampleArray>>> {
+
+    fn read(&mut self) -> Option<Vec<Arc<SampleArray>>> {
         let channels = self.spec().channels as usize;
         let mut channel_samples = vec![Vec::new(); channels];
         let sample_rate = self.spec().sample_rate;
@@ -26,7 +26,7 @@ impl <R> AudioReader for hound::WavReader<R> where R: Read  {
             }
         }
 
-        Some(channel_samples.into_iter().map(|v| Rc::new(SampleArray::new(sample_rate, v))).collect())
+        Some(channel_samples.into_iter().map(|v| Arc::new(SampleArray::new(sample_rate, v))).collect())
     }
 }
 
@@ -37,7 +37,7 @@ impl <W> AudioWriter for hound::WavWriter<W> where W: Write + Seek {
     fn write(writer: Self::Writer, clip: &Clip) -> bool {
         let spec = hound::WavSpec {
             channels: 1,
-            sample_rate: clip.samples_per_sec(),
+            sample_rate: clip.sample_rate(),
             bits_per_sample: 16, // TODO get num bits in Sample
             sample_format: hound::SampleFormat::Int,
         };

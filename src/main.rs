@@ -19,7 +19,7 @@ fn main() {
     
     //let half = samplearray.duration() / 2;
     //println!("{:?}", & samplearray.samples[0..20]);
-    //println!("{:?}\n samples per second = {}", samplearray.samples, samplearray.samples_per_sec);
+    //println!("{:?}\n samples per second = {}", samplearray.samples, samplearray.sample_rate);
     
     
     //if let Some((left, right)) = Subclip::split(samplearray, half) {

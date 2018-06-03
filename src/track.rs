@@ -1,16 +1,16 @@
 use outline::{Sample, Clip};
-use compounds::{Subclip};
-use std::rc::Rc;
-use std::cmp::{Ordering, max};
+use compounds::Subclip;
+use std::sync::Arc;
+use std::cmp::max;
 
 #[derive(Clone)]
 struct ClipPosition {
-    clip: Rc<Clip>,
+    clip: Arc<Clip>,
     position: u64,
 }
 
 struct TrackClip {
-    samples_per_sec: u32,
+    sample_rate: u32,
     duration: u64,
     clips: Vec<ClipPosition>,
 }
@@ -24,7 +24,12 @@ pub struct Track {
 
 //potentially make a different mono track instead of holding two of the same vectors
 impl Track {
-    fn new(name: String, sample_rate: u32) -> Self {
+    /// Creates a new, empty clip with a given name and sample rate.
+    /// 
+    /// # Example
+    /// let track = Track::new("my_track".to_owned(), 44100);
+    ///
+    pub fn new(name: String, sample_rate: u32) -> Self {
         Track {
             name,
             sample_rate,
@@ -32,61 +37,69 @@ impl Track {
             right_clips: Vec::new(),
         }
     }
-
-    fn insert(side: &mut Vec<ClipPosition>, clip: Rc<Clip>, position: u64, sample_rate: u32) -> bool {
-        if clip.samples_per_sec() != sample_rate {
-            return false
-        }
-
+    
+    // inserts a clip into a vector compatible with Track, where side is either
+    // the left or the right Vec.
+    // TODO refactor
+    fn insert(side: &mut Vec<ClipPosition>, clip: Arc<Clip>, position: u64) {
         let bsr = side.binary_search_by_key(&position, |cp| cp.position);
         let dur = clip.duration();
 
-        let shift_idx = match bsr {
-            Ok(idx)  => {
-                side.insert(idx, ClipPosition{clip, position,});
-                idx+1
+        let shift_index = match bsr {
+            Ok(index)  => {
+                side.insert(index, ClipPosition{clip, position,});
+                index + 1 // the index of the first clip to shift
             },
-            Err(e) => {
-                if e == 0 {
-                    //do the same thing as okay, its the earliest clip
-                    side.insert(e, ClipPosition{clip, position,});
-                    e+1
+            Err(index) => {
+                if index == 0 {
+                    //there are no clips before the insertion point; so no clip
+                    //needs to be split, so just insert
+                    side.insert(index, ClipPosition{clip, position,});
+                    index + 1 // the index of the first clip to shift
                 } else {
-                    let split_idx = e - 1;
-                    let cp_dur = side[split_idx].clip.duration();
-                    let cp_pos = side[split_idx].position;
-                    let cp_clip = side[split_idx].clip.clone();
-                    let split_point = position - cp_pos;
+                    // the previous clip needs to be split if the previous
+                    // clip overlaps with the position of the new clip
+                    let split_index = index - 1;  
+                    let split_duration = side[split_index].clip.duration();
+                    let split_position = side[split_index].position;
+                    let split_clip = side[split_index].clip.clone();
+                    let split_point = position - split_position;
 
-                    if  cp_dur > split_point {
-                        if let Some((l,r)) = Subclip::split(cp_clip, split_point) {
-                            side[split_idx].clip = l;
+                    if  split_duration > split_point {
+                        if let Some((l, r)) = Subclip::split(split_clip, split_point) {
+                            side[split_index].clip = l;
 
-                            side.insert(e, ClipPosition{clip, position,});
-                            side.insert(e+1, ClipPosition{clip: r, position: position+dur});
-                            e+2
+                            side.insert(index, ClipPosition{clip, position,});
+                            side.insert(index + 1, ClipPosition{clip: r, position: position + dur});
+                            index + 2 // the index of the first clip to shift
                         } else {
                             //math must be wrong
-                            panic!();
+                            panic!("Rust Audio Workbench nonrecoverable error");
                         }
                     } else {
-                        side.insert(e, ClipPosition{clip, position,});
-                        e+1
+                        side.insert(index, ClipPosition{clip, position,});
+                        index + 1 // the index of the first clip to shift
                     }
                 }
             },
         };
-
-        for i in shift_idx..side.len() {
+        
+        // shift each later clip over by the inserted clip's duration
+        for i in shift_index..side.len() {
             side[i].position += dur;
         }
-
-        true
     }
-
-    pub fn insert_mono(&mut self, clip: Rc<Clip>, position: u64) {
-        Self::insert(&mut self.left_clips, clip.clone(), position, self.sample_rate);
-        Self::insert(&mut self.right_clips, clip, position, self.sample_rate);
+    
+    /// Inserts a Clip into self, shifting later clips by the inserted clip's duration.
+    /// 
+    pub fn insert_mono(&mut self, clip: Arc<Clip>, position: u64) -> bool {
+        if clip.sample_rate() != self.sample_rate {
+            false
+        } else {
+            Self::insert(&mut self.left_clips, clip.clone(), position);
+            Self::insert(&mut self.right_clips, clip, position);
+            true
+        }
     }
 
     fn insert_stereo() {
@@ -96,8 +109,10 @@ impl Track {
     fn remove(side: &mut Vec<ClipPosition>, position: u64, duration: u64) {
         unimplemented!()
     }
-
-    fn duration(&self) -> u64 {
+    
+    /// Returns the duration of the entire Track. If the mono and stero channels
+    /// have different durations, the longer one is returned.
+    pub fn duration(&self) -> u64 {
         let left_dur = match self.left_clips.iter().last() {
             Some(cp) => cp.position + cp.clip.duration(),
             None     => 0,
@@ -110,18 +125,17 @@ impl Track {
 
         max(right_dur, left_dur)
     }
-
-    fn track_to_clip(&self, side: &Vec<ClipPosition>) -> Rc<Clip> {
+    
+    // convert a 
+    fn track_to_clip(&self, side: &Vec<ClipPosition>) -> Arc<Clip> {
         let tc = TrackClip{
-            samples_per_sec: self.sample_rate,
+            sample_rate: self.sample_rate,
             duration: self.duration(),
             clips: side.clone(),
         };
 
-        Rc::new(tc)
-
+        Arc::new(tc)
     }
-
 }
 
 impl Clip for TrackClip {
@@ -130,28 +144,26 @@ impl Clip for TrackClip {
     }
 
     /// returns the number of samples per second of this clip.
-    fn samples_per_sec(&self) -> u32 {
-        self.samples_per_sec
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
     }
 
     /// get the sample at a point.
     fn get(&self, sample_at: u64) -> Sample {
         let bsr = self.clips.binary_search_by_key(&sample_at, |cp| cp.position);
         match bsr {
-            Ok(idx) => {
-                return self.clips[idx].clip.get(0)
+            Ok(index) => {
+                self.clips[index].clip.get(0)
             },
-            Err(e)  => {
-                if e == 0 {
-                    return 0
+            Err(index)  => {
+                if index == 0 {
+                    0
                 } else {
-                    let get_idx = e - 1;
-                    let cp_dur = self.clips[get_idx].clip.duration();
-                    let cp_pos = self.clips[get_idx].position;
-                    let get_point = sample_at - cp_pos;
-
-                    return self.clips[get_idx].clip.get(get_point)
-
+                    let get_idx = index - 1;
+                    let split_dur = self.clips[get_idx].clip.duration();
+                    let split_pos = self.clips[get_idx].position;
+                    let get_point = sample_at - split_pos;
+                    self.clips[get_idx].clip.get(get_point)
                 }
             }
         }
