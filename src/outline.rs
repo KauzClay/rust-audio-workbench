@@ -116,5 +116,5 @@ pub trait AudioWriter {
 
     ///Writes a Clip to a specified audio file
     //TODO allow for n-channel writes
-    fn write(w: Self::Writer, c: &Clip) -> bool;
+    fn write(w: Self::Writer, c: Arc<Clip>) -> bool;
 }

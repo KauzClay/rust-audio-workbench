@@ -5,6 +5,7 @@ extern crate hound;
 use std::io::{Read, Write, BufReader, BufRead};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::fs;
 use std::ops::Fn;
 use std::path::Path;
 use std::ffi::OsStr;
@@ -12,7 +13,7 @@ use std::str::SplitWhitespace;
 
 use wavreader;
 use track::Track;
-use outline::{Clip, AudioReader, Time};
+use outline::{Clip, AudioReader, AudioWriter, Time};
 use compounds::Subclip;
 use samplearray::SampleArray;
 
@@ -36,6 +37,7 @@ impl RawCliEnvironment {
         env.commands.insert("import".to_owned(), import);
         env.commands.insert("info".to_owned(), info);
         env.commands.insert("insertmono".to_owned(), insert_mono);
+        env.commands.insert("write".to_owned(), write);
         env
     }
 
@@ -219,5 +221,36 @@ fn import(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Res
         } else {
             Err(format!("Unsupported file type ?."))
         }
+    }
+}
+
+
+fn write(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
+    //hacky, did not think through all possible edge cases
+    //also only writes the left channel, but since we only insert mono, that should be okay
+    let mut words = check_num_args(cmd, 2, "write <file name> <track name>")?;
+    check_keyword(words.next(), "write")?;
+    let filename = words.next().unwrap();
+    let trackname =  words.next().unwrap();
+    let path = Path::new(filename);
+
+    let track = if let Some(index) = tracks.iter().position(|ref t| t.name() == trackname) {
+        &tracks[index]
+    } else {
+        return Err(format!("Track with name {} not found.", trackname));
+    };
+
+    let l = track.left_channel_as_clip();
+
+    let f = fs::OpenOptions::new().write(true)
+                         .create(true)
+                         .open(filename)
+                         .unwrap(); //bad
+
+    if hound::WavWriter::write(f, l) {
+        Ok(format!("Track:{} written to {}.", trackname, filename))
+    } else {
+        fs::remove_file(filename).unwrap();
+        Err(format!("Failed to write track {} to file {}", trackname, filename))
     }
 }

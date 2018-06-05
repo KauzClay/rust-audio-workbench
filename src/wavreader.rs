@@ -36,7 +36,7 @@ impl <R> AudioReader for hound::WavReader<R> where R: Read  {
 impl <W> AudioWriter for hound::WavWriter<W> where W: Write + Seek {
     type Writer = W;
 
-    fn write(writer: Self::Writer, clip: &Clip) -> bool {
+    fn write(writer: Self::Writer, clip: Arc<Clip>) -> bool {
         let spec = hound::WavSpec {
             channels: 1,
             sample_rate: clip.sample_rate(),

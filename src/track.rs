@@ -172,7 +172,7 @@ impl Track {
         self.track_to_clip(&self.right_clips)
     }
 
-    // convert a
+    // convert a channel of a track into a clip
     fn track_to_clip(&self, side: &Vec<ClipPosition>) -> Arc<Clip> {
         let tc = TrackClip{
             sample_rate: self.sample_rate,
