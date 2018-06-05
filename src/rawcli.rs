@@ -10,7 +10,7 @@ use std::str::SplitWhitespace;
 
 use wavreader;
 use track::Track;
-use outline::{Clip, AudioReader};
+use outline::{Clip, AudioReader, Time};
 use compounds::Subclip;
 use samplearray::SampleArray;
 
@@ -32,7 +32,7 @@ impl RawCliEnvironment {
         
         env.commands.insert("copy".to_owned(), copy);
         env.commands.insert("import".to_owned(), import);
-        
+        env.commands.insert("info".to_owned(), info);
         env
     }
     
@@ -93,7 +93,21 @@ fn parse_f64(word: &str) -> Result<f64, String> {
     word.parse::<f64>().map_err(|_| format!("Expected number, found {}", word))
 }
 
-//fn copy<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String, String> {
+fn info(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
+    let track_info = tracks.iter().map(|t|
+        format!("track '{}': duration: {} seconds ({} samples)",
+                t.name(), (0.0f64).from_samples(t.duration(), t.sample_rate()), t.duration()))
+            .collect::<Vec<String>>().join("\n");
+    
+    let clip_info = (0..clips.len()).map(|i| {
+        let c = &clips[i];
+        format!("clip {}: duration: {} seconds ({} samples)",
+                i, (0.0f64).from_samples(c.duration(), c.sample_rate()), c.duration())
+        }).collect::<Vec<String>>().join("\n");
+            
+    Ok(format!("{}\n{}", track_info, clip_info))
+}
+
 fn copy(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
     let mut words = check_num_args(cmd, 3, "copy <track name> <start time> <duration>")?;
     
