@@ -125,6 +125,9 @@ impl Track {
         }
     }
 
+    ///Inserts two clips corresponding to left and right into the track.
+    ///Clips do not need to be the same length. The clips will start at the same position
+    ///and the shorter clip is padded with 0s to the duration of the longer clip
     pub fn insert_stereo(&mut self, left_clip: Arc<Clip>, right_clip: Arc<Clip>, position: u64) -> bool {
         if left_clip.sample_rate() != self.sample_rate || right_clip.sample_rate() != self.sample_rate{
             false

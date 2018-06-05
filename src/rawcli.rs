@@ -14,7 +14,7 @@ use std::str::SplitWhitespace;
 use wavreader;
 use track::Track;
 use outline::{Clip, AudioReader, AudioWriter, Time};
-use compounds::Subclip;
+use compounds::{Concat, Reverse, Subclip};
 use samplearray::SampleArray;
 
 type RawCliCommand = (fn(&mut Vec<Track>, &mut Vec<Arc<Clip>>, &str) -> Result<String, String>);
@@ -38,6 +38,7 @@ impl RawCliEnvironment {
         env.commands.insert("info".to_owned(), info);
         env.commands.insert("insertmono".to_owned(), insert_mono);
         env.commands.insert("write".to_owned(), write);
+        env.commands.insert("reverse".to_owned(), reverse);
         env
     }
 
@@ -253,4 +254,18 @@ fn write(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Resu
         fs::remove_file(filename).unwrap();
         Err(format!("Failed to write track {} to file {}", trackname, filename))
     }
+}
+
+fn reverse(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
+    let mut words = check_num_args(cmd, 1, "reverse <clip number>")?;
+    check_keyword(words.next(), "reverse")?;
+    // already checked number of args; can unwrap
+
+    let clip_index = parse_clip_num(words.next().unwrap(), clips.len())?;
+    let clip = clips[clip_index].clone();
+    clips[clip_index] = Arc::new(Reverse::new(clip));
+
+    Ok(format!("Successful reverseal of clip {}", clip_index))
+
+
 }
