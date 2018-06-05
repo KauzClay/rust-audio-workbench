@@ -39,6 +39,7 @@ impl RawCliEnvironment {
         env.commands.insert("insertmono".to_owned(), insert_mono);
         env.commands.insert("write".to_owned(), write);
         env.commands.insert("reverse".to_owned(), reverse);
+        env.commands.insert("concat".to_owned(), concat);
         env
     }
 
@@ -266,6 +267,21 @@ fn reverse(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Re
     clips[clip_index] = Arc::new(Reverse::new(clip));
 
     Ok(format!("Successful reverseal of clip {}", clip_index))
+}
 
+fn concat(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
+    let mut words = check_num_args(cmd, 2, "concat <clip1> <clip2>")?;
 
+    check_keyword(words.next(), "concat")?;
+
+    // already checked number of args; can unwrap
+    let clip_index1 = parse_clip_num(words.next().unwrap(), clips.len())?;
+    let clip_index2 = parse_clip_num(words.next().unwrap(), clips.len())?;
+
+    if let Some(concat) = Concat::new(clips[clip_index1].clone(), clips[clip_index2].clone()) {
+        clips.push(concat);
+        Ok(format!("Successful concat of clips {} and {}", clip_index1, clip_index2))
+    } else {
+        Err(format!("Failed to concat clips {} and {}", clip_index1, clip_index2))
+    }
 }
