@@ -1,4 +1,4 @@
-use outline::{Sample, Clip};
+use outline::{Sample, Clip, Time};
 use compounds::Subclip;
 use std::sync::Arc;
 use std::cmp::max;
@@ -106,7 +106,8 @@ impl Track {
 
     /// Inserts a Clip into self, shifting later clips by the inserted clip's duration.
     ///
-    pub fn insert_mono(&mut self, clip: Arc<Clip>, position: u64) -> bool {
+    pub fn insert_mono<T: Time>(&mut self, clip: Arc<Clip>, position_time: T) -> bool {
+        let position = position_time.to_samples(self.sample_rate());
         if clip.sample_rate() != self.sample_rate {
             false
         } else {

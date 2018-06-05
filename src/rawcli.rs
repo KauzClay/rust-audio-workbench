@@ -33,6 +33,7 @@ impl RawCliEnvironment {
         env.commands.insert("copy".to_owned(), copy);
         env.commands.insert("import".to_owned(), import);
         env.commands.insert("info".to_owned(), info);
+        env.commands.insert("insertmono".to_owned(), insert_mono);
         env
     }
     
@@ -92,6 +93,42 @@ fn check_keyword(found: Option<&str>, expected: &str) -> Result<(), String> {
 fn parse_f64(word: &str) -> Result<f64, String> {
     word.parse::<f64>().map_err(|_| format!("Expected number, found {}", word))
 }
+
+fn parse_clip_num(word: &str, num_clips: usize) -> Result<usize, String> {
+    let n = word.parse::<usize>().map_err(|_| format!("Expected clip number, found {}", word))?;
+    if n >= num_clips {
+        Err(format!("{} is not a clip", n))
+    } else {
+        Ok(n)
+    }
+}
+
+
+fn insert_mono(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
+    let mut words = check_num_args(cmd, 3, "insertmono <track name> <clip number> <time>")?;
+    check_keyword(words.next(), "insertmono")?;
+    // already checked number of args; can unwrap
+    let trackname = words.next().unwrap();
+
+    let track = if let Some(index) = tracks.iter().position(|ref t| t.name() == trackname) {
+        &mut tracks[index]
+    } else {
+        return Err(format!("Track with name {} not found.", trackname));
+    };
+    
+    let clip_index = parse_clip_num(words.next().unwrap(), clips.len())?;
+    let clip = clips[clip_index].clone();
+    
+    let time = parse_f64(words.next().unwrap())?;
+    
+    if track.insert_mono(clip, time) {
+        Ok(format!("Successful insertion into {}", trackname))
+    } else {
+        Err(format!("Failure"))
+    }
+    
+}
+
 
 fn info(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
     let track_info = tracks.iter().map(|t|
