@@ -7,14 +7,18 @@ mod wavreader;
 mod compounds;
 mod track;
 mod rawcli;
+use std::io::{stdin, stdout};
 use outline::{Clip, AudioReader, AudioWriter};
 use samplearray::SampleArray;
 use compounds::{Concat, Subclip, Reverse};
 use std::fs;
+use rawcli::RawCliEnvironment;
 //use samplearray::SampleArray;
 
 
 fn main() {
+    let mut env = RawCliEnvironment::new(stdin(), stdout());
+    
     let channels = hound::WavReader::open("untitled.wav").unwrap().read().unwrap();
     let samplearray = channels[0].clone();
     

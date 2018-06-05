@@ -160,7 +160,15 @@ impl Track {
 
         max(right_dur, left_dur)
     }
-
+    
+    pub fn left_channel_as_clip(&self) -> Arc<Clip> {
+        self.track_to_clip(&self.left_clips)
+    }
+    
+    pub fn right_channel_as_clip(&self) -> Arc<Clip> {
+        self.track_to_clip(&self.right_clips)
+    }
+    
     // convert a
     fn track_to_clip(&self, side: &Vec<ClipPosition>) -> Arc<Clip> {
         let tc = TrackClip{
