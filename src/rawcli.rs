@@ -14,19 +14,17 @@ use outline::{Clip, AudioReader};
 use compounds::Subclip;
 use samplearray::SampleArray;
 
-type RawCliCommand<W> = (fn(&mut RawCliEnvironment<W>, &str) -> Result<String, String>);
+type RawCliCommand = (fn(&mut Vec<Track>, &mut Vec<Arc<Clip>>, &str) -> Result<String, String>);
 
-pub struct RawCliEnvironment<W: Write> {
-    writer: W,
+pub struct RawCliEnvironment {
     tracks: Vec<Track>,
     clips:  Vec<Arc<Clip>>,
-    commands: HashMap<String, RawCliCommand<W>>,
+    commands: HashMap<String, RawCliCommand>,
 }
 
-impl <W: Write> RawCliEnvironment<W> {
-    pub fn new(writer: W) -> Self {
+impl RawCliEnvironment {
+    pub fn new() -> Self {
         let mut env = RawCliEnvironment {
-            writer,
             tracks: Vec::new(),
             clips:  Vec::new(),
             commands: HashMap::new(),
@@ -38,20 +36,33 @@ impl <W: Write> RawCliEnvironment<W> {
         env
     }
     
-    fn enter_loop<R: Read>(&mut self, reader: R) {
+    pub fn enter_loop<R: Read, W: Write>(&mut self, reader: R, mut writer: W) {
+        write!(writer, ">").unwrap();
+        writer.flush().unwrap();
         let mut lines = BufReader::new(reader).lines();
         while let Some(Ok(line)) = lines.next() {
             if let Some(first_word) = line.split_whitespace().next() {
-                if first_word == "exit" {
-                    return
+                if first_word.is_empty() {
+                    write!(writer, ">").unwrap();
+                    writer.flush().unwrap();
+                    continue;
                 }
-                let func_option = self.commands.get(first_word);
+                
+                if first_word == "exit" {
+                    return;
+                }
+                
+                let func_option = {self.commands.get(first_word)};
                 if let Some(func) = func_option {
-                    match func(self, &line) {
-                        Ok(success_str) => writeln!(self.writer, "{}", success_str),   
-                        Err(err_str) => writeln!(self.writer, "{}", err_str),
+                    match func(&mut self.tracks, &mut self.clips, &line) {
+                        Ok(success_str) => writeln!(writer, "{}", success_str),   
+                        Err(err_str) => writeln!(writer, "{}", err_str),
                     }.unwrap();
-                } 
+                } else {
+                    writeln!(writer, "Unknown command {}", first_word).unwrap();
+                }
+                write!(writer, ">").unwrap();
+                writer.flush().unwrap();
             } // else empty line, continue
         }
     }
@@ -82,7 +93,8 @@ fn parse_f64(word: &str) -> Result<f64, String> {
     word.parse::<f64>().map_err(|_| format!("Expected number, found {}", word))
 }
 
-fn copy<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String, String> {
+//fn copy<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String, String> {
+fn copy(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
     let mut words = check_num_args(cmd, 3, "copy <track name> <start time> <duration>")?;
     
     check_keyword(words.next(), "copy")?;
@@ -90,8 +102,8 @@ fn copy<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String, S
     // already checked number of args; can unwrap
     let trackname = words.next().unwrap();
 
-    let track = if let Some(index) = env.tracks.iter().position(|ref t| t.name() == trackname) {
-        &env.tracks[index]
+    let track = if let Some(index) = tracks.iter().position(|ref t| t.name() == trackname) {
+        &tracks[index]
     } else {
         return Err(format!("Track with name {} not found.", trackname));
     };
@@ -104,14 +116,14 @@ fn copy<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String, S
     let right = Subclip::new(track.right_channel_as_clip(), start, duration)
         .ok_or_else(|| format!("Start or duration out of bounds"))?;
     
-    let left_index = env.clips.len();
-    env.clips.push(left);
-    env.clips.push(right);
+    let left_index = clips.len();
+    clips.push(left);
+    clips.push(right);
     
     Ok(format!("Left copied to Clip {}, right copied to Clip {}", left_index, left_index + 1))
 }
 
-fn import<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String, String> {
+fn import(tracks: &mut Vec<Track>, clips: &mut Vec<Arc<Clip>>, cmd: &str) -> Result<String, String> {
     let mut words = check_num_args(cmd, 2, "import <file name> <track name>")?;
     check_keyword(words.next(), "import")?;
     let filename = words.next().unwrap();
@@ -126,20 +138,20 @@ fn import<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String,
                 let mut track = Track::new(trackname.to_string(), sample_rate);
                 if vec.len() == 1 {
                     track.insert_mono(vec[0].clone(), 0);
-                    env.tracks.push(track);
+                    tracks.push(track);
                     Ok(format!("Created track {}", trackname))
                 } else if vec.len() == 2 {
-                    //track.insert_stereo(vec[0].clone(), vec[1].clone(), 0);
-                    env.tracks.push(track);
+                    track.insert_stereo(vec[0].clone(), vec[1].clone(), 0);
+                    tracks.push(track);
                     Ok(format!("Created track {}", trackname))
                 } else if vec.len() > 2 {
-                    //track.insert_stereo(vec[0].clone(), vec[1].clone(), 0);
-                    env.tracks.push(track);
+                    track.insert_stereo(vec[0].clone(), vec[1].clone(), 0);
+                    tracks.push(track);
                     Ok(format!(
                         "Warning: {} contains more than 2 channels; channels beyond the first two were truncated.", 
                         filename))
                 } else { // == 0
-                    env.tracks.push(track);
+                    tracks.push(track);
                     Ok(format!("File was empty; created empty track {}", trackname))
                 }
             } else {

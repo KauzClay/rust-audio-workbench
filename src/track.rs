@@ -122,7 +122,7 @@ impl Track {
         }
     }
 
-    fn insert_stereo(&mut self, left_clip: Arc<Clip>, right_clip: Arc<Clip>, position: u64) -> bool {
+    pub fn insert_stereo(&mut self, left_clip: Arc<Clip>, right_clip: Arc<Clip>, position: u64) -> bool {
         if left_clip.sample_rate() != self.sample_rate || right_clip.sample_rate() != self.sample_rate{
             false
         } else {

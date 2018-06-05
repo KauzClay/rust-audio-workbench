@@ -17,10 +17,12 @@ use rawcli::RawCliEnvironment;
 
 
 fn main() {
-    let mut env = RawCliEnvironment::new(stdin(), stdout());
+    let mut env = RawCliEnvironment::new();
     
-    let channels = hound::WavReader::open("untitled.wav").unwrap().read().unwrap();
-    let samplearray = channels[0].clone();
+    env.enter_loop(stdin(), stdout());
+    
+    //let channels = hound::WavReader::open("untitled.wav").unwrap().read().unwrap();
+    //let samplearray = channels[0].clone();
     
     //let half = samplearray.duration() / 2;
     //println!("{:?}", & samplearray.samples[0..20]);
@@ -30,14 +32,14 @@ fn main() {
     //if let Some((left, right)) = Subclip::split(samplearray, half) {
     //let left = pair.0;
     //let right = pair.1;
-    let rev = Reverse::new(samplearray);
+    //let rev = Reverse::new(samplearray);
     //    let concat = Concat::new(right, left).expect("concat failed");
-    let f = fs::OpenOptions::new().write(true)
-                         .create(true)
-                         .open("copy.wav").unwrap();
+    //let f = fs::OpenOptions::new().write(true)
+    //                     .create(true)
+    //                     .open("copy.wav").unwrap();
     // current limitation is that AudioWriter trait only handles mono, so for
     // demonstration purposes we're only working with one channel rn
-    println!("{:?}", hound::WavWriter::write(f, &rev));
+    //println!("{:?}", hound::WavWriter::write(f, &rev));
     //} else {
     //    panic!("split failed");
     //}

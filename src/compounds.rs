@@ -17,7 +17,7 @@ impl Subclip {
         let spc = clip.sample_rate();
         let start = start_time.to_samples(spc);
         let duration = duration_time.to_samples(spc);
-        //println!("{} > {} + {}", clip.duration(), start, duration);
+        
         if clip.duration() < start + duration {
             None
         } else {
