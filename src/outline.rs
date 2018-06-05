@@ -31,6 +31,19 @@ impl Time for u64 {
     }
 }
 
+impl Time for f64 {
+    /// f64's are treated as a real valued duration in seconds.
+    fn to_samples(&self, sample_rate: u32) -> u64 {
+        (self * sample_rate as f64) as u64
+    }
+
+    /// u64's are treated like the raw sample count, so calling from_samples
+    /// on a u64 returns self.
+    fn from_samples(&self, num_samples: u64, sample_rate: u32) -> Self {
+        num_samples as f64 / sample_rate as f64
+    }
+}
+
 ///The core functionality required by any struct that is to hold/represent audio data
 pub trait Clip {
     //from_iter()? or some other way to mix several Clips, not sure

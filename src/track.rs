@@ -39,7 +39,14 @@ impl Track {
             right_clips: Vec::new(),
         }
     }
-
+    
+    pub fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+    
+    pub fn name<'a>(&'a self) -> &'a str {
+        &self.name
+    }
     // inserts a clip into a vector compatible with Track, where side is either
     // the left or the right Vec.
     // TODO refactor

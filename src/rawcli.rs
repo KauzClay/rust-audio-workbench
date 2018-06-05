@@ -25,8 +25,8 @@ struct RawCliEnvironment<R: Read, W: Write> {
 fn copy<R: Read, W: Write>(env: &mut RawCliEnvironment<R, W>, cmd: &str) -> Result<String, String> {
     let mut words = cmd.split_whitespace();
     
-    // copy <track name> <start time> <duration> <cliip name>
-    let mut samples = Vec::new();
+    // copy <track name> <start time> <duration> <clip name>
+    //
     if words.next() != Some("copy") {
         return Err(format!("Unknown internal error"));
     }
@@ -34,14 +34,34 @@ fn copy<R: Read, W: Write>(env: &mut RawCliEnvironment<R, W>, cmd: &str) -> Resu
     let trackname = if let Some(word) = words.next() {
         word
     } else {
-        return Err(format!("Not enough arguments. Syntax is: 'import <file name> <track name>'"));
+        return Err(format!("Not enough arguments. Syntax is: 'copy <track name> <start time> <duration> <clip name>'"));
     };
     
-    let mut track = if let Some(t) = env.tracks.iter().position(|&t| t.name == trackname) {
-        t
+    let track = if let Some(index) = env.tracks.iter().position(|ref t| t.name() == trackname) {
+        &env.tracks[index]
     } else {
         return Err(format!("Track with name {} not found.", trackname));
     };
+    
+    let start = if let Some(Ok(s)) = words.next().map(|w| w.parse::<f64>()) {
+        s
+    } else {
+        return Err(format!("Syntax is: 'copy <track name> <start time> <duration> <clip name>'"));
+    };
+    
+    let duration = if let Some(Ok(d)) = words.next().map(|w| w.parse::<f64>()) {
+        d
+    } else {
+        return Err(format!("Syntax is: 'copy <track name> <start time> <duration> <clip name>'"));
+    };
+    
+    let clip_name = if let Some(word) = words.next() {
+        word
+    } else {
+        return Err(format!("Not enough arguments. Syntax is: 'copy <track name> <start time> <duration> <clip name>'"));
+    };
+    
+    //let mut samples = Vec::new();
     
     Ok(format!(""))
 }
