@@ -1,3 +1,5 @@
+//! The core trait for implementing structs that represent audio data
+
 use std::io;
 use std::io::{Read, Write, Seek};
 use std::sync::Arc;
@@ -99,7 +101,7 @@ pub trait Filter {
     }
 }
 
-
+///A trait for reading various audio files into compliant structures for manipulation in raw
 pub trait AudioReader {
     type Reader: Read;
 
@@ -108,7 +110,7 @@ pub trait AudioReader {
     fn read(&mut self) -> Option<Vec<Arc<SampleArray>>>;
 }
 
-
+///A trait for writing raw clips into various audio files
 pub trait AudioWriter {
     type Writer: Write + Seek;
 

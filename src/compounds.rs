@@ -1,3 +1,4 @@
+//! Various Clip implementations that allow for joining and selecting sub sections
 use std::sync::Arc;
 use outline::{Clip, Time, Sample};
 
@@ -17,7 +18,7 @@ impl Subclip {
         let spc = clip.sample_rate();
         let start = start_time.to_samples(spc);
         let duration = duration_time.to_samples(spc);
-        
+
         if clip.duration() < start + duration {
             None
         } else {

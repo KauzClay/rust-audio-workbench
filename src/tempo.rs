@@ -1,5 +1,6 @@
-use std::fmt;
+//! Structs for accessing audio data in terms of musical concepts of time signature and tempo
 
+use std::fmt;
 
 #[derive(Debug)]
 pub struct TimeSignature {
@@ -19,7 +20,7 @@ impl TimeSignature {
     pub fn new(beats: u16, beat_unit: u16) -> Self {
         TimeSignature { beats, beat_unit }
     }
-    
+
     pub fn common_time() -> Self { Self::new(4, 4) }
     pub fn cut_time() -> Self { Self::new(2, 2) }
 }
@@ -36,11 +37,11 @@ impl Tempo {
     pub fn new(time_signature: TimeSignature, bpm: f64) -> Self {
         Tempo { time_signature, bpm }
     }
-    
+
     pub fn beat_length_sec(&self) -> f64 {
         60.0 / self.bpm
     }
-    
+
     pub fn measure_length_sec(&self) -> f64 {
         self.beat_length_sec() * self.time_signature.beats as f64
     }
@@ -52,4 +53,3 @@ impl fmt::Display for Tempo {
         write!(f, "{} bpm ({})", self.bpm, self.time_signature)
     }
 }
-

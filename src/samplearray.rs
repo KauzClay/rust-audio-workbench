@@ -1,3 +1,4 @@
+//! An clip implementation to hold audio data in a vector
 //mod outline;
 //mod outline;
 use outline::{Clip, Sample};

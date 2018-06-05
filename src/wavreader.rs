@@ -1,3 +1,5 @@
+//! An implementation of our AudioReader and AudioWriter Traits using the Hound Wav crate
+
 extern crate hound;
 
 use std::io;

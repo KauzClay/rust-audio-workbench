@@ -1,3 +1,5 @@
+//! Track struct that is used to maintain various clips assosiated with each other
+
 use outline::{Sample, Clip, Time};
 use compounds::Subclip;
 use std::sync::Arc;
@@ -39,11 +41,11 @@ impl Track {
             right_clips: Vec::new(),
         }
     }
-    
+
     pub fn sample_rate(&self) -> u32 {
         self.sample_rate
     }
-    
+
     pub fn name<'a>(&'a self) -> &'a str {
         &self.name
     }
@@ -161,15 +163,15 @@ impl Track {
 
         max(right_dur, left_dur)
     }
-    
+
     pub fn left_channel_as_clip(&self) -> Arc<Clip> {
         self.track_to_clip(&self.left_clips)
     }
-    
+
     pub fn right_channel_as_clip(&self) -> Arc<Clip> {
         self.track_to_clip(&self.right_clips)
     }
-    
+
     // convert a
     fn track_to_clip(&self, side: &Vec<ClipPosition>) -> Arc<Clip> {
         let tc = TrackClip{
