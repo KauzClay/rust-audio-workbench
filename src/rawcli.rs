@@ -1,6 +1,6 @@
 extern crate hound;
 
-use std::io::{Read, Write};
+use std::io::{Read, Write, BufReader, BufRead};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::ops::Fn;
@@ -14,27 +14,47 @@ use outline::{Clip, AudioReader};
 use compounds::Subclip;
 use samplearray::SampleArray;
 
-type RawCliCommand<R, W> = (fn(&RawCliEnvironment<R, W>, &str) -> Result<String, String>);
+type RawCliCommand<W> = (fn(&mut RawCliEnvironment<W>, &str) -> Result<String, String>);
 
-pub struct RawCliEnvironment<R: Read, W: Write> {
-    reader: R,
+pub struct RawCliEnvironment<W: Write> {
     writer: W,
     tracks: Vec<Track>,
     clips:  Vec<Arc<Clip>>,
-    commands: HashMap<String, RawCliCommand<R, W>>,
+    commands: HashMap<String, RawCliCommand<W>>,
 }
 
-impl <R: Read, W: Write> RawCliEnvironment<R, W> {
-    pub fn new(reader: R, writer: W) -> Self {
-        RawCliEnvironment {
-            reader,
+impl <W: Write> RawCliEnvironment<W> {
+    pub fn new(writer: W) -> Self {
+        let mut env = RawCliEnvironment {
             writer,
             tracks: Vec::new(),
             clips:  Vec::new(),
-            commands: HashMap::new()
-        }
+            commands: HashMap::new(),
+        };
+        
+        env.commands.insert("copy".to_owned(), copy);
+        env.commands.insert("import".to_owned(), import);
+        
+        env
     }
     
+    fn enter_loop<R: Read>(&mut self, reader: R) {
+        let mut lines = BufReader::new(reader).lines();
+        while let Some(Ok(line)) = lines.next() {
+            if let Some(first_word) = line.split_whitespace().next() {
+                if first_word == "exit" {
+                    return
+                }
+                let func_option = self.commands.get(first_word);
+                if let Some(func) = func_option {
+                    match func(self, &line) {
+                        Ok(success_str) => writeln!(self.writer, "{}", success_str),   
+                        Err(err_str) => writeln!(self.writer, "{}", err_str),
+                    }.unwrap();
+                } 
+            } // else empty line, continue
+        }
+    }
 }
 
 fn check_num_args<'a>(cmd: &'a str, num: usize, syntax: &str) -> Result<SplitWhitespace<'a>, String> {
@@ -62,7 +82,7 @@ fn parse_f64(word: &str) -> Result<f64, String> {
     word.parse::<f64>().map_err(|_| format!("Expected number, found {}", word))
 }
 
-fn copy<R: Read, W: Write>(env: &mut RawCliEnvironment<R, W>, cmd: &str) -> Result<String, String> {
+fn copy<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String, String> {
     let mut words = check_num_args(cmd, 3, "copy <track name> <start time> <duration>")?;
     
     check_keyword(words.next(), "copy")?;
@@ -91,7 +111,7 @@ fn copy<R: Read, W: Write>(env: &mut RawCliEnvironment<R, W>, cmd: &str) -> Resu
     Ok(format!("Left copied to Clip {}, right copied to Clip {}", left_index, left_index + 1))
 }
 
-fn import<R: Read, W: Write>(env: &mut RawCliEnvironment<R, W>, cmd: &str) -> Result<String, String> {
+fn import<W: Write>(env: &mut RawCliEnvironment<W>, cmd: &str) -> Result<String, String> {
     let mut words = check_num_args(cmd, 2, "import <file name> <track name>")?;
     check_keyword(words.next(), "import")?;
     let filename = words.next().unwrap();
