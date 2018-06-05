@@ -3,7 +3,7 @@ use std::io::{Read, Write, Seek};
 use std::sync::Arc;
 use samplearray::SampleArray;
 
-
+///A type to represent the size of one unit of audio data
 pub type Sample = i16;
 
 /// moments and durations are represented by types that implement Time.
@@ -23,7 +23,7 @@ impl Time for u64 {
     fn to_samples(&self, _sample_rate: u32) -> u64 {
         *self
     }
-    
+
     /// u64's are treated like the raw sample count, so calling from_samples
     /// on a u64 returns self.
     fn from_samples(&self, num_samples: u64, _sample_rate: u32) -> Self {
@@ -31,7 +31,7 @@ impl Time for u64 {
     }
 }
 
-///
+///The core functionality required by any struct that is to hold/represent audio data
 pub trait Clip {
     //from_iter()? or some other way to mix several Clips, not sure
     // where that code should go
@@ -75,6 +75,8 @@ pub trait Clip {
     }
 }
 
+///Any filter-style modification of audio data can be achieved by implementing structs
+///following this trait
 pub trait Filter {
     fn apply_sample<C: Clip>(&self, clip: &mut C, start: u64, duration: u64);
 
@@ -84,15 +86,20 @@ pub trait Filter {
     }
 }
 
+
 pub trait AudioReader {
     type Reader: Read;
-    
+
     /// Converts an n-channel audio file into a vector of n reference-counted
     /// SampleArrays. Returns None upon failure.
     fn read(&mut self) -> Option<Vec<Arc<SampleArray>>>;
 }
 
+
 pub trait AudioWriter {
     type Writer: Write + Seek;
+
+    ///Writes a Clip to a specified audio file
+    //TODO allow for n-channel writes
     fn write(w: Self::Writer, c: &Clip) -> bool;
 }

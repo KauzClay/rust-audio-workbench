@@ -15,6 +15,8 @@ struct TrackClip {
     clips: Vec<ClipPosition>,
 }
 
+///A struct to represent a track containing a left and right channel.
+///In future iterations, Track will be able to handle N channels.
 pub struct Track {
     name: String,
     sample_rate: u32,
@@ -25,7 +27,7 @@ pub struct Track {
 //potentially make a different mono track instead of holding two of the same vectors
 impl Track {
     /// Creates a new, empty clip with a given name and sample rate.
-    /// 
+    ///
     /// # Example
     /// let track = Track::new("my_track".to_owned(), 44100);
     ///
@@ -37,13 +39,16 @@ impl Track {
             right_clips: Vec::new(),
         }
     }
-    
+
     // inserts a clip into a vector compatible with Track, where side is either
     // the left or the right Vec.
     // TODO refactor
-    fn insert(side: &mut Vec<ClipPosition>, clip: Arc<Clip>, position: u64) {
+    fn insert(side: &mut Vec<ClipPosition>, clip: Arc<Clip>, position: u64, dur: u64) -> bool {
         let bsr = side.binary_search_by_key(&position, |cp| cp.position);
-        let dur = clip.duration();
+        //let dur = duration;//clip.duration();
+        if dur < clip.duration() {
+            return false
+        }
 
         let shift_index = match bsr {
             Ok(index)  => {
@@ -59,7 +64,7 @@ impl Track {
                 } else {
                     // the previous clip needs to be split if the previous
                     // clip overlaps with the position of the new clip
-                    let split_index = index - 1;  
+                    let split_index = index - 1;
                     let split_duration = side[split_index].clip.duration();
                     let split_position = side[split_index].position;
                     let split_clip = side[split_index].clip.clone();
@@ -83,33 +88,56 @@ impl Track {
                 }
             },
         };
-        
+
         // shift each later clip over by the inserted clip's duration
         for i in shift_index..side.len() {
             side[i].position += dur;
         }
+
+        true
     }
-    
+
     /// Inserts a Clip into self, shifting later clips by the inserted clip's duration.
-    /// 
+    ///
     pub fn insert_mono(&mut self, clip: Arc<Clip>, position: u64) -> bool {
         if clip.sample_rate() != self.sample_rate {
             false
         } else {
-            Self::insert(&mut self.left_clips, clip.clone(), position);
-            Self::insert(&mut self.right_clips, clip, position);
+            let dur = clip.duration();
+            if !Self::insert(&mut self.left_clips, clip.clone(), position, dur) {
+                return false
+            }
+            if !Self::insert(&mut self.right_clips, clip, position, dur) {
+                return false
+            }
+
             true
         }
     }
 
-    fn insert_stereo() {
-        unimplemented!()
+    fn insert_stereo(&mut self, left_clip: Arc<Clip>, right_clip: Arc<Clip>, position: u64) -> bool {
+        if left_clip.sample_rate() != self.sample_rate || right_clip.sample_rate() != self.sample_rate{
+            false
+        } else {
+
+            let l_dur = left_clip.duration();
+            let r_dur = right_clip.duration();
+            let dur = max(l_dur, r_dur);
+            if !Self::insert(&mut self.left_clips, left_clip, position, dur) {
+                return false
+            }
+            if !Self::insert(&mut self.right_clips, right_clip, position, dur) {
+                return false
+            }
+
+            true
+        }
     }
 
     fn remove(side: &mut Vec<ClipPosition>, position: u64, duration: u64) {
         unimplemented!()
     }
-    
+
     /// Returns the duration of the entire Track. If the mono and stero channels
     /// have different durations, the longer one is returned.
     pub fn duration(&self) -> u64 {
@@ -125,8 +153,8 @@ impl Track {
 
         max(right_dur, left_dur)
     }
-    
-    // convert a 
+
+    // convert a
     fn track_to_clip(&self, side: &Vec<ClipPosition>) -> Arc<Clip> {
         let tc = TrackClip{
             sample_rate: self.sample_rate,
