@@ -6,6 +6,7 @@ mod outline;
 mod wavreader;
 mod compounds;
 mod track;
+mod rawcli;
 use outline::{Clip, AudioReader, AudioWriter};
 use samplearray::SampleArray;
 use compounds::{Concat, Subclip, Reverse};

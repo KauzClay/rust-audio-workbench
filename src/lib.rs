@@ -4,3 +4,4 @@ mod samplearray;
 mod wavreader;
 mod compounds;
 mod track;
+mod rawcli;
