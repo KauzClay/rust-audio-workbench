@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["SampleArray","A Clip Implementation that maintains audio data as a vector of Samples (see outline.rs:Sample) A common use for this object would be to hold the raw data, which you then reference throughout a project."]]});

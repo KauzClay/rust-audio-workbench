@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Concat","A struct used to represent the joining of two Clip objects. Good for chaining together SubClips."],["Reverse","A simple struct to represent the reverse of a clip."],["Subclip","A struct used to represent a subset of audio data within a larger set via reference. Good for working with smaller chunks of data out of a SampleArray."]]});
