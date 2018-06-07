@@ -154,6 +154,10 @@ impl Clip for Reverse {
     /// get the sample at a point. Samples are 'got' by inverting the sample_at index.
     ///EX: sample_at of 0 returns Sample N, sample_at of 1 returns Sample N-1, etc.
     fn get(&self, sample_at: u64) -> Sample {
-        self.0.get(self.0.duration() - sample_at - 1)
+        if self.0.duration() < sample_at + 1 {
+            self.0.get(self.0.duration() - sample_at - 1)
+        } else {
+            0
+        }
     }
 }
